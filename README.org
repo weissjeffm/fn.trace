@@ -1,0 +1,26 @@
+* fn.trace is an extension of clojure.contrib.trace
+
+**If you can run your code in a binding form
+#+BEGIN_EXAMPLE
+(use 'fn.trace)
+(dotrace-all {:namespaces [my.ns1 my.ns2]
+              :fns [my.other.ns1/fn1]
+              :exclude [my.ns1/excludedfn]}
+  (my.ns1/fn1 arg1 arg2)
+  (my.ns2/fn5 blah blah blah)
+  (comment "etc, etc"))
+#+END_EXAMPLE
+
+**If you don't have control of the stack 
+#+BEGIN_EXAMPLE
+(with-all-in-ns trace [my.ns1 my.ns2])   ;;turns on trace
+(trace #'my.other.ns1/fn1)
+(untrace #'my.ns1/excludefn)
+
+(my.ns1/fn1 arg1 arg2)  ;;when this is run later, it will be traced
+(my.ns2/fn5 blah blah blah)
+(comment "etc, etc")
+#+END_EXAMPLE
+
+Copyright (C) 2011 Jeff Weiss
+Distributed under the Eclipse Public License, the same as Clojure.
