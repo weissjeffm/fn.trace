@@ -20,6 +20,7 @@
 
 ** If you don't have control of the stack 
 #+BEGIN_EXAMPLE
+(use 'fn.trace)
 (with-all-in-ns trace [my.ns1 my.ns2])   ;;turns on trace
 (trace #'my.other.ns1/fn1)
 (untrace #'my.ns1/excludefn)
