@@ -1,5 +1,12 @@
 * fn.trace is an extension of clojure.contrib.trace
 
+** To add to your project.clj
+#+BEGIN_EXAMPLE
+ [fn.trace "1.0.0-SNAPSHOT"]
+#+END_EXAMPLE
+
+
+* Usage
 ** If you can run your code in a binding form
 #+BEGIN_EXAMPLE
 (use 'fn.trace)
