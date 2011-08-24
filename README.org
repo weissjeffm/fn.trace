@@ -1,6 +1,6 @@
 * fn.trace is an extension of clojure.contrib.trace
 
-**If you can run your code in a binding form
+** If you can run your code in a binding form
 #+BEGIN_EXAMPLE
 (use 'fn.trace)
 (dotrace-all {:namespaces [my.ns1 my.ns2]
@@ -11,7 +11,7 @@
   (comment "etc, etc"))
 #+END_EXAMPLE
 
-**If you don't have control of the stack 
+** If you don't have control of the stack 
 #+BEGIN_EXAMPLE
 (with-all-in-ns trace [my.ns1 my.ns2])   ;;turns on trace
 (trace #'my.other.ns1/fn1)
