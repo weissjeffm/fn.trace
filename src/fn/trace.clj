@@ -1,7 +1,7 @@
 (ns fn.trace
   (:require [robert.hooke :as hook]
             [clojure.contrib.prxml :as xml]
-            [clojure.zip :as zip])
+            [clojure.java.io :as io])
   (:use [clojure.contrib.core :only [-?>]]))
 
 (def
@@ -142,7 +142,7 @@
     data))
 
 (defn to-html "Takes a trace file produced with clj-format, turns it into html with syntax highlighting and css."
-  [f & [sh-url stylesheet-url]]
+  [f & [sh-url]]
 
   (xml/prxml [:doctype! "html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" "
               "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\""]
@@ -152,10 +152,16 @@
                         :content "text/html;charset=utf-8"}
                 [:script {:type "text/javascript" :src (str sh-url "scripts/shCore.js")}]
                 [:script {:type "text/javascript" :src (str sh-url "scripts/shBrushClojure.js")}]
-                [:link {:type "text/css" :rel "sylesheet" :href stylesheet-url}]
+                [:link {:type "text/css" :rel "sylesheet" :href "styles/shTrace.css"}]
                 [:script {:type "text/javascript"}
                  "SyntaxHighlighter.defaults['gutter'] = false;
                   SyntaxHighlighter.defaults['toolbar'] = false;
                   SyntaxHighlighter.all();"]]]
               [:body [:h1 "Trace log"]
-               (to-xml-tree f)]]))
+               [:div {:class "highlight"}] (to-xml-tree f)]]))
+
+(defn htmlify [dest-dir trace-files sh-url]
+    (io/copy (-> (ClassLoader/getSystemClassLoader) (.getResourceAsStream "resources/shTrace.css"))
+             (java.io.File. (str dest-dir "/styles/shTrace.css")))
+  (doseq [file trace-files]
+    (to-html file sh-url)))
