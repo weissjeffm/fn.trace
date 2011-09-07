@@ -20,7 +20,7 @@
   (let [label (when name (format "%6s: " name))]
     (if out?
       (str label (trace-indent) "=> " (pr-str value))
-      (str label (trace-indent) value))))
+      (str label (trace-indent) (pr-str value)))))
 
 (defn tracer
   "This function is called by trace.  Prints to standard output, but
@@ -126,7 +126,7 @@
         cdata (fn [form] [:script {:type "syntaxhighlighter" :class "brush: clj"}
                          [:cdata! (str form)]])
         data (loop [lines (line-seq rdr) acc [] ins-point [0]]
-               (clojure.pprint/pprint [ acc ins-point])
+               (comment (clojure.pprint/pprint [ acc ins-point]))
                (if (empty? lines) acc
                    (let [[d _ form out?] (-> lines first read-string)
                          v (if out? (cdata form)
@@ -144,24 +144,32 @@
 (defn to-html "Takes a trace file produced with clj-format, turns it into html with syntax highlighting and css."
   [f & [sh-url]]
 
-  (xml/prxml [:doctype! "html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" "
-              "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\""]
-             [:html {:xmlns "http://www.w3.org/1999/xhtml"}
-              [:head
-               [:meta  {:http-equiv "Content-Type"
-                        :content "text/html;charset=utf-8"}
-                [:script {:type "text/javascript" :src (str sh-url "scripts/shCore.js")}]
-                [:script {:type "text/javascript" :src (str sh-url "scripts/shBrushClojure.js")}]
-                [:link {:type "text/css" :rel "sylesheet" :href "styles/shTrace.css"}]
-                [:script {:type "text/javascript"}
-                 "SyntaxHighlighter.defaults['gutter'] = false;
-                  SyntaxHighlighter.defaults['toolbar'] = false;
-                  SyntaxHighlighter.all();"]]]
-              [:body [:h1 "Trace log"]
-               [:div {:class "highlight"}] (to-xml-tree f)]]))
+  (binding [*out* (java.io.FileWriter. (str f ".html"))
+            xml/*prxml-indent* 4
+            xml/*html-compatible* true]
+    (xml/prxml [:doctype! "html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" "
+                "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\""]
+               [:html {:xmlns "http://www.w3.org/1999/xhtml"}
+                [:head
+                 [:meta  {:http-equiv "Content-Type"
+                          :content "text/html;charset=utf-8"}]
+                 [:title f]
+                 [:script {:type "text/javascript" :src (str sh-url "scripts/shCore.js")} " "]
+                 [:script {:type "text/javascript" :src (str sh-url "scripts/shBrushClojure.js")} " "]
+                 [:link {:type "text/css" :rel "stylesheet" :href "styles/shTrace.css"}]
+                 [:script {:type "text/javascript"}
+                  [:raw! "SyntaxHighlighter.defaults['gutter'] = false;
+                          SyntaxHighlighter.defaults['toolbar'] = false;
+                          SyntaxHighlighter.all();"]]]
+                [:body [:h1 "Trace log"]
+                 (vec (concat [:div {:class "highlight"}] (to-xml-tree f)))]])
+    (.close *out*)))
 
 (defn htmlify [dest-dir trace-files sh-url]
-    (io/copy (-> (ClassLoader/getSystemClassLoader) (.getResourceAsStream "resources/shTrace.css"))
-             (java.io.File. (str dest-dir "/styles/shTrace.css")))
+  (let [style "styles/shTrace.css"
+        sfile (java.io.File. (str dest-dir "/" style))]
+    (.mkdirs (.getParentFile sfile))
+    (io/copy (-> (ClassLoader/getSystemClassLoader) (.getResourceAsStream style))
+              sfile))
   (doseq [file trace-files]
     (to-html file sh-url)))
