@@ -60,7 +60,7 @@
   margin: 0.3em 0 0.3em 0 !important;
   position: relative !important;
   overflow: auto !important;
-  font-size: 1em !important;
+  font-size: 0.8em !important;
 }
 .syntaxhighlighter.source {
   overflow: hidden !important;
@@ -198,7 +198,8 @@
   font-weight: bold !important;
 }
 .syntaxhighlighter.printing .preprocessor {
-  color: gray !important;
+  color: #eeaaff !important;
+  font-weight: bold !important;
 }
 .syntaxhighlighter.printing .variable {
   color: #aa7700 !important;
@@ -298,13 +299,15 @@
     color: #888888 !important;
 }
 .syntaxhighlighter .preprocessor {
-  color: #435a5f !important;
+  color: #eeaaff !important;
+  font-weight: bold !important;
 }
 .syntaxhighlighter .variable {
   color: #898989 !important;
 }
 .syntaxhighlighter .value {
   color: #ccffcc !important;
+  font-weight: bold !important;
 }
 .syntaxhighlighter .functions {
   color: #ffeeaa !important;

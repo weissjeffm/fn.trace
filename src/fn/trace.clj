@@ -1,7 +1,8 @@
 (ns fn.trace
   (:require [robert.hooke :as hook]
             [clojure.contrib.prxml :as xml]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [clojure.pprint :as pp])
   (:use [clojure.contrib.core :only [-?>]]))
 
 (def
@@ -14,7 +15,14 @@
   (apply str (take *trace-depth* (repeat "|    "))))
 
 (defn clj-format [name value & [out?]]
-  (pr-str [*trace-depth* name value out?]))
+  (let [[printer miser margin] (if out?
+                                 [pp/simple-dispatch 120 150]
+                                 [pp/code-dispatch 90 110])
+        val (binding [pp/*print-miser-width* miser
+                      pp/*print-right-margin* margin]
+              (with-out-str (pp/with-pprint-dispatch printer
+                              (pp/pprint value))))]
+    (pr-str [*trace-depth* name val out?])))
 
 (defn text-format [name value & [out?]]
   (let [label (when name (format "%6s: " name))]
@@ -31,7 +39,7 @@
 (defn per-thread-tracer [& [formatter]]
   (let [formatter (or formatter text-format)
         tracefile-name (str (.getName (Thread/currentThread)) ".trace")
-        tr-file-writer (java.io.FileWriter. tracefile-name true)]
+        tr-file-writer (java.io.FileWriter. tracefile-name)]
     (fn [name value & [out?]]
       (binding [*out* tr-file-writer]
         (println (formatter name value out?))))))
@@ -142,9 +150,9 @@
     data))
 
 (defn to-html "Takes a trace file produced with clj-format, turns it into html with syntax highlighting and css."
-  [f & [sh-url]]
+  [f dest-dir & [sh-url]]
 
-  (binding [*out* (java.io.FileWriter. (str f ".html"))
+  (binding [*out* (java.io.FileWriter. (str dest-dir "/" f ".html"))
             xml/*prxml-indent* 4
             xml/*html-compatible* true]
     (xml/prxml [:doctype! "html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" "
@@ -172,4 +180,4 @@
     (io/copy (-> (ClassLoader/getSystemClassLoader) (.getResourceAsStream style))
               sfile))
   (doseq [file trace-files]
-    (to-html file sh-url)))
+    (to-html file dest-dir sh-url)))
