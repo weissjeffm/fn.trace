@@ -54,7 +54,7 @@
     (tracer id (cons name args))
     (let [[value err] (binding [*trace-depth* (inc *trace-depth*)]
                         (try [(apply f args) nil]
-                             (catch Exception e [e e])))]
+                             (catch Throwable e [e e])))]
       (tracer id value true)
       (when err (throw err))
       value)))
@@ -95,7 +95,7 @@
                                    args))))
     (let [[value err] (binding [*trace-depth* (inc *trace-depth*)]
                         (try [(apply f args) nil]
-                             (catch Exception e [e e])))]
+                             (catch Throwable e [e e])))]
       (tracer id (str (trace-indent) "=> " (pr-str value)))
       (when err (throw err))
       value)))
