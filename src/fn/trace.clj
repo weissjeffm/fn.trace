@@ -3,9 +3,8 @@
             [clojure.java.io :as io]
             [clojure.pprint :as pp]))
 
-(def
-  ^{:dynamic true
-    :doc "Current stack depth of traced function calls."}
+(def ^{:dynamic true
+       :doc "Current stack depth of traced function calls."}
  *trace-depth* 0)
 
 (defn trace-indent
@@ -29,7 +28,7 @@
       (str label (trace-indent) "=> " (pr-str value))
       (str label (trace-indent) (pr-str value)))))
 
-(defn tracer
+(defn ^:dynamic tracer
   "This function is called by trace.  Prints to standard output, but
   may be rebound to do anything you like.  'name' is optional."
   [name value & [out?]]
