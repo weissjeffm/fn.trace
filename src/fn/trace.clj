@@ -1,12 +1,11 @@
 (ns fn.trace
-  (:require [robert.hooke :as hook]
-            [clojure.contrib.prxml :as xml]
+  (:require [clojure.prxml :as xml]
             [clojure.java.io :as io]
-            [clojure.pprint :as pp])
-  (:use [clojure.contrib.core :only [-?>]]))
+            [clojure.pprint :as pp]))
 
 (def
- ^{:doc "Current stack depth of traced function calls."}
+  ^{:dynamic true
+    :doc "Current stack depth of traced function calls."}
  *trace-depth* 0)
 
 (defn trace-indent
@@ -70,42 +69,19 @@
        (defn ~name [& args#]
          (trace-fn-call '~name f# args#)))))
 
+
 (defmacro dotrace
   "Given a sequence of function identifiers, evaluate the body
    expressions in an environment in which the identifiers are bound to
    the traced functions.  Does not work on inlined functions,
    such as clojure.core/+"
   [fnames & exprs]
-  `(binding [~@(interleave fnames
+  `(with-redefs [~@(interleave fnames
                            (for [fname fnames]
                              `(let [f# @(var ~fname)]
                                 (fn [& args#]
                                   (trace-fn-call '~fname f# args#)))))]
      ~@exprs))
-
-(defn trace-fn-call-hook
-  "Traces a single call to a function f with args.  'name' is the
-  symbol name of the function."
-  [f & args]  
-  (let [id (gensym "TR")
-        m (meta f)]
-    (tracer id (str (trace-indent)
-                          (pr-str (cons
-                                   (symbol (str (:ns m)) (str (:name m)))
-                                   args))))
-    (let [[value err] (binding [*trace-depth* (inc *trace-depth*)]
-                        (try [(apply f args) nil]
-                             (catch Throwable e [e e])))]
-      (tracer id (str (trace-indent) "=> " (pr-str value)))
-      (when err (throw err))
-      value)))
-
-(defn trace [v]
-  (if-not (some #{trace-fn-call-hook} (-?> (deref v) meta :robert.hooke/hook deref))
-    (hook/add-hook v trace-fn-call-hook)))
-
-(defn untrace [v]
-  (hook/remove-hook v trace-fn-call-hook))
 
 (defn with-all-in-ns [f & namespaces]
   (doseq [namespace namespaces]
