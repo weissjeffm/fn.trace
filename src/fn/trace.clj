@@ -82,18 +82,21 @@
                                   (trace-fn-call '~fname f# args#)))))]
      ~@exprs))
 
+(defn non-macro-fn? [v]
+  (and (fn? (deref v)) (not (:macro (meta v)))))
+
 (defn with-all-in-ns [f & namespaces]
   (doseq [namespace namespaces]
     (require namespace)
     (doseq [[_ v] (ns-interns namespace)]
-      (if (fn? (deref v))
+      (if (non-macro-fn? v)
         (f v)))))
 
 
 (defn all-fn-in-ns [ & namespaces]
   (for [namespace namespaces
         [k v] (ns-interns namespace)
-        :when (fn? (deref v))]
+        :when (non-macro-fn? v)]
     (symbol (str namespace) (str k))))
 
 (defmacro dotrace-all [{:keys [namespaces fns exclude]} & forms]
