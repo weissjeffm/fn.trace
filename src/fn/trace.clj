@@ -53,7 +53,8 @@
     (let [[value err] (binding [*trace-depth* (inc *trace-depth*)]
                         (try [(apply f args) nil]
                              (catch Throwable e [e e])))]
-      (tracer id value true)
+      (binding [*print-length* 10] ;;catch-all max, rebind if you want more/less
+        (tracer id value true))
       (when err (throw err))
       value)))
 
