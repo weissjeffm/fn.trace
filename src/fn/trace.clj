@@ -70,12 +70,10 @@
 
 (defn rebind-map [fnames]
   (into {}
-        (for [fname fnames]
-          (do (println fname (resolve fname))
-              (let [v (resolve fname)
-                    fn-to-trace (var-get v)]
-                [v (fn [& args]
-                     (trace-fn-call fname fn-to-trace  args))])))))
+        (for [fname fnames :let [thisvar (resolve fname)] :when thisvar]
+          (let [fn-to-trace (var-get thisvar)]
+            [thisvar (fn [& args]
+                       (trace-fn-call fname fn-to-trace  args))]))))
 
 (defmacro dotrace
   "Given a sequence of function identifiers, evaluate
@@ -94,7 +92,6 @@
     (doseq [[_ v] (ns-interns namespace)]
       (if (non-macro-fn? v)
         (f v)))))
-
 
 (defn all-fn-in-ns [ & namespaces]
   (for [namespace namespaces
