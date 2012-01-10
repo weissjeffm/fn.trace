@@ -42,8 +42,6 @@
       (binding [*out* tr-file-writer]
         (println (formatter name value out?))))))
 
-
-
 (defn trace-fn-call
   "Traces a single call to a function f with args.  'name' is the
   symbol name of the function."
@@ -70,19 +68,20 @@
        (defn ~name [& args#]
          (trace-fn-call '~name f# args#)))))
 
+(defn rebind-map [fnames]
+  (into {}
+        (for [fname fnames :let [thisvar (resolve fname)] :when thisvar]
+          (let [fn-to-trace (var-get thisvar)]
+            [thisvar (fn [& args]
+                       (trace-fn-call fname fn-to-trace  args))]))))
 
 (defmacro dotrace
-  "Given a sequence of function identifiers, evaluate the body
-   expressions in an environment in which the identifiers are bound to
-   the traced functions.  Does not work on inlined functions,
+  "Given a sequence of function identifiers, evaluate
+   the body expressions in an environment in which the identifiers are
+   bound to the traced functions. Does not work on inlined functions,
    such as clojure.core/+"
   [fnames & exprs]
-  `(with-redefs [~@(interleave fnames
-                           (for [fname fnames]
-                             `(let [f# @(var ~fname)]
-                                (fn [& args#]
-                                  (trace-fn-call '~fname f# args#)))))]
-     ~@exprs))
+  `(with-redefs-fn (rebind-map ~fnames) (fn [] ~@exprs)) )
 
 (defn non-macro-fn? [v]
   (and (fn? (deref v)) (not (:macro (meta v)))))
@@ -94,20 +93,26 @@
       (if (non-macro-fn? v)
         (f v)))))
 
-
 (defn all-fn-in-ns [ & namespaces]
   (for [namespace namespaces
         [k v] (ns-interns namespace)
         :when (non-macro-fn? v)]
     (symbol (str namespace) (str k))))
 
-(defmacro dotrace-all [{:keys [namespaces fns exclude]} & forms]
+(defn as-trace-list
+  "Given a map, creates a list of functions to trace. Any function in a namespace
+  in :namespaces will be traced, plus any function listed in :fns. Any
+  function listed in :exclude will not be traced."
+  [{:keys [namespaces fns exclude]}]
+  (vec (remove (set exclude)
+               (concat (mapcat all-fn-in-ns namespaces) fns))))
+
+(defmacro dotrace-all [m & forms]
   `(dotrace
-   ~(vec (remove (set exclude)
-                 (concat (mapcat all-fn-in-ns namespaces) fns))) ~@forms))
+       (as-trace-list ~m) ~@forms))
 
-
-(defn to-xml-tree "takes a filename that was created with clj-format, reads it and turns it into data that can be passed to prxml for html output."
+(defn to-xml-tree
+  "takes a filename that was created with clj-format, reads it and turns it into data that can be passed to prxml for html output."
   [f]
   (let [rdr (java.io.BufferedReader. 
              (java.io.FileReader. f))
@@ -119,7 +124,7 @@
                    (let [[d _ form out?] (-> lines first read-string)
                          v (if out? (cdata form)
                                [:div {:class "trace"} 
-                                     (cdata form)])]
+                                (cdata form)])]
                      (recur (drop 1 lines)
                             (assoc-in acc ins-point v)
                             (if out?
