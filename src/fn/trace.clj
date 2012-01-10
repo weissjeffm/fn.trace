@@ -71,10 +71,11 @@
 (defn rebind-map [fnames]
   (into {}
         (for [fname fnames]
-          (let [v (resolve fname)
-                fn-to-trace (var-get v)]
-            [v (fn [& args]
-                 (trace-fn-call fname fn-to-trace  args))]))))
+          (do (println fname (resolve fname))
+              (let [v (resolve fname)
+                    fn-to-trace (var-get v)]
+                [v (fn [& args]
+                     (trace-fn-call fname fn-to-trace  args))])))))
 
 (defmacro dotrace
   "Given a sequence of function identifiers, evaluate
