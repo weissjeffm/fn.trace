@@ -137,7 +137,7 @@
 (defn to-html "Takes a trace file produced with clj-format, turns it into html with syntax highlighting and css."
   [f dest-dir & [sh-url]]
 
-  (binding [*out* (java.io.FileWriter. (str dest-dir "/" f ".html"))
+  (binding [*out* (java.io.FileWriter. (str dest-dir "/" (-> f java.io.File. .getName) ".html"))
             xml/*prxml-indent* 4
             xml/*html-compatible* true]
     (xml/prxml [:doctype! "html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" "
