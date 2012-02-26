@@ -166,3 +166,18 @@
               sfile))
   (doseq [file trace-files]
     (to-html file dest-dir sh-url)))
+
+(defn log-dispatch [obj]
+  (if (-> obj meta :log)
+    (let [indent 2]
+      (doseq [[o out?] obj]
+        (if-not out?
+          (do
+            (pp/pprint-indent :current indent)
+            (pp/code-dispatch o))
+          (do
+            (pp/pprint-indent :current (- indent))
+            (pp/simple-dispatch o)))
+        (pp/pprint-newline :mandatory))) 
+    
+    (pp/code-dispatch obj)))
