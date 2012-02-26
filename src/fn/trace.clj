@@ -86,19 +86,19 @@
 (defn non-macro-fn? [v]
   (and (fn? (deref v)) (not (:macro (meta v)))))
 
-(defn with-all-in-ns [f & namespaces]
-  (doseq [namespace namespaces]
-    (require namespace)
-    (doseq [[_ v] (ns-interns namespace)]
-      (if (non-macro-fn? v)
-        (f v)))))
-
 (defn all-fn-in-ns [ & namespaces]
   (for [namespace namespaces
         [k v] (ns-interns namespace)
         :when (non-macro-fn? v)]
-    (symbol (str namespace) (str k))))
+    (.sym v)))
 
+(defn all-fns
+  "Takes a list of symbols corresponding to either fns or namespaces,
+   namespaces are expanded to all the fns in that namespace. Returns
+   the larger list of symbols."
+  [ & syms]
+  (mapcat (fn [sym] (if (find-ns sym) (all-fn-in-ns sym)
+                       (list sym))) syms))
 (defn as-trace-list
   "Given a map, creates a list of functions to trace. Any function in a namespace
   in :namespaces will be traced, plus any function listed in :fns. Any
@@ -107,9 +107,9 @@
   (vec (remove (set exclude)
                (concat (mapcat all-fn-in-ns namespaces) fns))))
 
-(defmacro dotrace-all [m & forms]
+(defmacro dotrace-all [syms & forms]
   `(dotrace
-       (as-trace-list ~m) ~@forms))
+       (apply all-fns ~syms) ~@forms))
 
 (defn to-xml-tree
   "takes a filename that was created with clj-format, reads it and turns it into data that can be passed to prxml for html output."
