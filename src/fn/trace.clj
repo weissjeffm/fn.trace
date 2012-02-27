@@ -90,13 +90,13 @@
   (for [namespace namespaces
         [k v] (ns-interns namespace)
         :when (non-macro-fn? v)]
-    (.sym v)))
+    (symbol (str (.ns v) "/" (.sym v)))))
 
 (defn all-fns
   "Takes a list of symbols corresponding to either fns or namespaces,
    namespaces are expanded to all the fns in that namespace. Returns
    the larger list of symbols."
-  [ & syms]
+  [syms]
   (mapcat (fn [sym] (if (find-ns sym) (all-fn-in-ns sym)
                        (list sym))) syms))
 (defn as-trace-list
@@ -109,7 +109,7 @@
 
 (defmacro dotrace-all [syms & forms]
   `(dotrace
-       (apply all-fns ~syms) ~@forms))
+       (all-fns ~syms ~@forms)))
 
 (defn to-xml-tree
   "takes a filename that was created with clj-format, reads it and turns it into data that can be passed to prxml for html output."
@@ -169,15 +169,17 @@
 
 (defn log-dispatch [obj]
   (if (-> obj meta :log)
-    (let [indent 2]
-      (doseq [[o out?] obj]
-        (if-not out?
-          (do
-            (pp/pprint-indent :current indent)
-            (pp/code-dispatch o))
-          (do
-            (pp/pprint-indent :current (- indent))
-            (pp/simple-dispatch o)))
-        (pp/pprint-newline :mandatory))) 
+    (binding [*print-level* 10
+              *print-length* 100]
+      (let [indent 2]
+       (doseq [[o out?] obj]
+         (if-not out?
+           (do
+             (pp/pprint-indent :current indent)
+             (pp/code-dispatch o))
+           (do
+             (pp/pprint-indent :current (- indent))
+             (pp/simple-dispatch o)))
+         (pp/pprint-newline :mandatory)))) 
     
     (pp/code-dispatch obj)))
