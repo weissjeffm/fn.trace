@@ -7,20 +7,14 @@
        :doc "Current stack depth of traced function calls."}
  *trace-depth* 0)
 
+(defmethod print-method Throwable [t out]
+  (print-ctor t (fn [o w]
+                  (print-method (.getMessage t) w)) out))
+
 (defn trace-indent
   "Returns an indentation string based on *trace-depth*"
   []
   (apply str (take *trace-depth* (repeat "|    "))))
-
-(defn clj-format [name value & [out?]]
-  (let [[printer miser margin] (if out?
-                                 [pp/simple-dispatch 120 150]
-                                 [pp/code-dispatch 90 110])
-        val (binding [pp/*print-miser-width* miser
-                      pp/*print-right-margin* margin]
-              (with-out-str (pp/with-pprint-dispatch printer
-                              (pp/pprint value))))]
-    (pr-str [*trace-depth* name val out?])))
 
 (defn text-format [name value & [out?]]
   (let [label (when name (format "%6s: " name))]
@@ -110,62 +104,6 @@
 (defmacro dotrace-all [syms & forms]
   `(dotrace
        (all-fns ~syms ~@forms)))
-
-(defn to-xml-tree
-  "takes a filename that was created with clj-format, reads it and turns it into data that can be passed to prxml for html output."
-  [f]
-  (let [rdr (java.io.BufferedReader. 
-             (java.io.FileReader. f))
-        cdata (fn [form] [:script {:type "syntaxhighlighter" :class "brush: clj"}
-                         [:cdata! (str form)]])
-        data (loop [lines (line-seq rdr) acc [] ins-point [0]]
-               (comment (clojure.pprint/pprint [ acc ins-point]))
-               (if (empty? lines) acc
-                   (let [[d _ form out?] (-> lines first read-string)
-                         v (if out? (cdata form)
-                               [:div {:class "trace"} 
-                                (cdata form)])]
-                     (recur (drop 1 lines)
-                            (assoc-in acc ins-point v)
-                            (if out?
-                              (let [popped (pop ins-point)]
-                                (conj (vec (butlast popped)) (inc (last popped))))
-                              (conj ins-point 3))))))]
-    (.close rdr)
-    data))
-
-(defn to-html "Takes a trace file produced with clj-format, turns it into html with syntax highlighting and css."
-  [f dest-dir & [sh-url]]
-
-  (binding [*out* (java.io.FileWriter. (str dest-dir "/" (-> f java.io.File. .getName) ".html"))
-            xml/*prxml-indent* 4
-            xml/*html-compatible* true]
-    (xml/prxml [:doctype! "html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" "
-                "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\""]
-               [:html {:xmlns "http://www.w3.org/1999/xhtml"}
-                [:head
-                 [:meta  {:http-equiv "Content-Type"
-                          :content "text/html;charset=utf-8"}]
-                 [:title f]
-                 [:script {:type "text/javascript" :src (str sh-url "scripts/shCore.js")} " "]
-                 [:script {:type "text/javascript" :src (str sh-url "scripts/shBrushClojure.js")} " "]
-                 [:link {:type "text/css" :rel "stylesheet" :href "styles/shTrace.css"}]
-                 [:script {:type "text/javascript"}
-                  [:raw! "SyntaxHighlighter.defaults['gutter'] = false;
-                          SyntaxHighlighter.defaults['toolbar'] = false;
-                          SyntaxHighlighter.all();"]]]
-                [:body [:h1 "Trace log"]
-                 (vec (concat [:div {:class "highlight"}] (to-xml-tree f)))]])
-    (.close *out*)))
-
-(defn htmlify [dest-dir trace-files sh-url]
-  (let [style "styles/shTrace.css"
-        sfile (java.io.File. (str dest-dir "/" style))]
-    (.mkdirs (.getParentFile sfile))
-    (io/copy (-> (ClassLoader/getSystemClassLoader) (.getResourceAsStream style))
-              sfile))
-  (doseq [file trace-files]
-    (to-html file dest-dir sh-url)))
 
 (defn log-dispatch [obj]
   (if (-> obj meta :log)
