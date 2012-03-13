@@ -93,13 +93,6 @@
   [syms]
   (mapcat (fn [sym] (if (find-ns sym) (all-fn-in-ns sym)
                        (list sym))) syms))
-(defn as-trace-list
-  "Given a map, creates a list of functions to trace. Any function in a namespace
-  in :namespaces will be traced, plus any function listed in :fns. Any
-  function listed in :exclude will not be traced."
-  [{:keys [namespaces fns exclude]}]
-  (vec (remove (set exclude)
-               (concat (mapcat all-fn-in-ns namespaces) fns))))
 
 (defmacro dotrace-all [syms & forms]
   `(dotrace
