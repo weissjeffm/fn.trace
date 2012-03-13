@@ -103,7 +103,7 @@
 
 (defmacro dotrace-all [syms & forms]
   `(dotrace
-       (all-fns ~syms ~@forms)))
+       (all-fns ~syms) ~@forms))
 
 (defn log-dispatch [obj]
   (if (-> obj meta :log)
