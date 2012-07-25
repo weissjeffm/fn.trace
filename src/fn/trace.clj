@@ -89,8 +89,11 @@
    namespaces are expanded to all the fns in that namespace. Returns
    the larger list of symbols."
   [syms]
-  (mapcat (fn [sym] (if (find-ns sym) (all-fn-in-ns sym)
-                       (list sym))) syms))
+  (mapcat (fn [sym]
+            (cond (find-ns sym) (all-fn-in-ns sym)
+                  (try (resolve sym) (catch Exception _ nil)) (list sym)
+                  :else (list)))
+          syms))
 
 (defmacro dotrace-all [syms & forms]
   `(dotrace
