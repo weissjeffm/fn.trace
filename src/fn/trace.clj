@@ -1,7 +1,5 @@
 (ns fn.trace
-  (:require [clojure.prxml :as xml]
-            [clojure.java.io :as io]
-            [clojure.pprint :as pp]))
+  (:require [clojure.pprint :as pp]))
 
 (def ^{:dynamic true
        :doc "Current stack depth of traced function calls."}
