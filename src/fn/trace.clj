@@ -26,7 +26,26 @@
   [name value & [out?]]
   (println (text-format name value)))
 
-(defn per-thread-tracer [& [formatter]]
+(def thread-local-filewriter
+  (proxy [ThreadLocal] []
+    (initialValue [] (->> (Thread/currentThread)
+                        .getName
+                        (format "%s.trace")
+                        java.io.FileWriter.))))
+
+(defn thread-tracer
+  "Writes trace to a file based on the current thread name"
+  [name value & [out?]]
+  (binding [*out* (.get thread-local-filewriter)]
+    (println (text-format name value out?))))
+
+(defn per-thread-tracer
+  "Returns a tracer that writes to a file based on the name of the
+   current thread. Warning: binding tracer to functions produced here
+   might not have the effect you want. Futures, for instance, will use
+   the same binding as the parent thread, and cause shuffled tracing
+   entries in the output."
+  [& [formatter]]
   (let [formatter (or formatter text-format)
         tracefile-name (str (.getName (Thread/currentThread)) ".trace")
         tr-file-writer (java.io.FileWriter. tracefile-name)]
