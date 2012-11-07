@@ -20,6 +20,46 @@
       (str label (trace-indent) "=> " (pr-str value))
       (str label (trace-indent) (pr-str value)))))
 
+(defn take-while-coll
+  "Returns a lazy sequence of successive items from coll while
+  (pred coll) returns true. pred must be free of side-effects."
+  {:added "1.0"
+   :static true}
+  [pred coll]
+  (when-let [s (seq coll)]
+    (when (pred s)
+      (cons (first s) (take-while-coll pred (rest s))))))
+
+(defprotocol Realized
+  (realized [coll])
+  (realized-part [x]))
+
+(extend-protocol Realized
+  clojure.lang.IPending
+  (realized [coll]
+    (realized? coll))
+  (realized-part [coll]
+    (take-while-coll realized coll))
+
+  clojure.lang.ChunkedCons
+  (realized [coll]
+    (realized (chunk-rest coll)))
+  
+  clojure.lang.ISeq
+  (realized [s] false)
+  (realized-part [coll]
+    (take-while-coll realized coll))
+  
+  clojure.lang.Cons
+  (realized [coll]
+    (realized (rest coll)))
+
+  java.lang.Object
+  (realized [o] true)
+  (realized-part [o] o))
+
+
+
 (defn ^:dynamic tracer
   "This function is called by trace.  Prints to standard output, but
   may be rebound to do anything you like.  'name' is optional."
@@ -67,6 +107,8 @@
         (tracer id value true))
       (when err (throw err))
       value)))
+
+
 
 (defmacro deftrace
   "Use in place of defn; traces each call/return of this fn, including
