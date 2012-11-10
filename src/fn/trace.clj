@@ -45,8 +45,6 @@
 (defn take-while-realized
   "Returns a lazy sequence of successive items from coll while
   (realized coll) returns true."
-  {:added "1.0"
-   :static true}
   [s]
   (lazy-seq
     (when (and s (realized s))
