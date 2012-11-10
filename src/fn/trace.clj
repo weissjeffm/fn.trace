@@ -88,13 +88,13 @@
   symbol name of the function."
   [name f args]
   (let [id (gensym "t")]
-    (tracer id (cons name args))
+    (tracer id (cons name (map realized-part args)))
     (let [[value err] (binding [*trace-depth* (inc *trace-depth*)]
                         (try [(apply f args) nil]
                              (catch Throwable e [e e])))]
       (binding [*print-length* (or *print-length* 10)
                 *print-level* (or *print-level* 10)] ;;catch-all max, rebind if you want more/less
-        (tracer id value true))
+        (tracer id (realized-part value) true))
       (when err (throw err))
       value)))
 
