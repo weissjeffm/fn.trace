@@ -40,7 +40,11 @@
   
   java.lang.Object
   (realized [o] true)
-  (realized-part [o] o))
+  (realized-part [o] o)
+
+  nil
+  (realized [n] true)
+  (realized-part [n] nil))
 
 (defn take-while-realized
   "Returns a lazy sequence of successive items from coll while
