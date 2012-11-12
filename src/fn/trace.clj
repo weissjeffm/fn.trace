@@ -20,39 +20,23 @@
       (str label (trace-indent) "=> " (pr-str value))
       (str label (trace-indent) (pr-str value)))))
 
-(declare take-while-realized)
-
-(defprotocol Realized
-  (realized [coll])
-  (realized-part [x]))
-
-(extend-protocol Realized
-  clojure.lang.IPending
-  (realized [coll]
-    (realized? coll))
-  (realized-part [coll]
-    (take-while-realized coll))
-
-  clojure.lang.ASeq
-  (realized [coll] true)
-  (realized-part [coll]
-    (take-while-realized coll))
-  
-  java.lang.Object
-  (realized [o] true)
-  (realized-part [o] o)
-
-  nil
-  (realized [n] true)
-  (realized-part [n] nil))
+(defn realized [x]
+  (if (instance? clojure.lang.IPending x)
+    (realized? x)
+    true))
 
 (defn take-while-realized
   "Returns a lazy sequence of successive items from coll while
   (realized coll) returns true."
   [s]
-  (lazy-seq
-    (when (and s (realized s))
-      (cons (first s) (take-while-realized (rest s))))))
+  (if (and s (realized s) (seq s))
+    (lazy-seq
+      (cons (first s) (take-while-realized (rest s))))
+    '()))
+
+(defmulti realized-part class)
+(defmethod realized-part clojure.lang.ISeq [x] (take-while-realized x))
+(defmethod realized-part :default [x] x)
 
 (defn ^:dynamic tracer
   "This function is called by trace.  Prints to standard output, but
