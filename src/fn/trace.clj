@@ -5,10 +5,6 @@
        :doc "Current stack depth of traced function calls."}
  *trace-depth* 0)
 
-(defmethod print-method Throwable [t out]
-  (print-ctor t (fn [o w]
-                  (print-method (.getMessage t) w)) out))
-
 (defn trace-indent
   "Returns an indentation string based on *trace-depth*"
   []
