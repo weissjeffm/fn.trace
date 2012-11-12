@@ -20,6 +20,26 @@
       (str label (trace-indent) "=> " (pr-str value))
       (str label (trace-indent) (pr-str value)))))
 
+(defn realized [x]
+  (if (instance? clojure.lang.IPending x)
+    (realized? x)
+    true))
+
+(defn take-while-realized
+  "Returns a lazy sequence of successive items from coll while
+  (realized coll) returns true."
+  [s]
+  (let [rl? (realized s)]
+    (cond (and rl? (seq s))
+          (lazy-seq
+            (cons (first s) (take-while-realized (rest s))))
+          rl? '()
+          :else '(:lazy-items))))
+
+(defmulti realized-part class)
+(defmethod realized-part clojure.lang.ISeq [x] (take-while-realized x))
+(defmethod realized-part :default [x] x)
+
 (defn ^:dynamic tracer
   "This function is called by trace.  Prints to standard output, but
   may be rebound to do anything you like.  'name' is optional."
@@ -58,15 +78,17 @@
   symbol name of the function."
   [name f args]
   (let [id (gensym "t")]
-    (tracer id (cons name args))
+    (tracer id (cons name (map realized-part args)))
     (let [[value err] (binding [*trace-depth* (inc *trace-depth*)]
                         (try [(apply f args) nil]
                              (catch Throwable e [e e])))]
       (binding [*print-length* (or *print-length* 10)
                 *print-level* (or *print-level* 10)] ;;catch-all max, rebind if you want more/less
-        (tracer id value true))
+        (tracer id (realized-part value) true))
       (when err (throw err))
       value)))
+
+
 
 (defmacro deftrace
   "Use in place of defn; traces each call/return of this fn, including
