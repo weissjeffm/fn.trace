@@ -29,10 +29,12 @@
   "Returns a lazy sequence of successive items from coll while
   (realized coll) returns true."
   [s]
-  (if (and s (realized s) (seq s))
-    (lazy-seq
-      (cons (first s) (take-while-realized (rest s))))
-    '()))
+  (let [rl? (realized s)]
+    (cond (and rl? (seq s))
+          (lazy-seq
+            (cons (first s) (take-while-realized (rest s))))
+          rl? '()
+          :else '(:lazy-items))))
 
 (defmulti realized-part class)
 (defmethod realized-part clojure.lang.ISeq [x] (take-while-realized x))
