@@ -3,7 +3,18 @@
 
 (def ^{:dynamic true
        :doc "Current stack depth of traced function calls."}
- *trace-depth* 0)
+  *trace-depth* 0)
+
+(def ^{:dynamic true
+       :doc "Maximum depth to trace to (default no limit)"}
+ *max-depth* nil)
+
+(def ^{:dynamic true
+       :doc "Map of function's symbol to how deep to trace into that
+             function.  0 means don't trace even this function, 2
+             means trace this function and anything it calls directly,
+             etc.  example: {'foo 0, 'bar 1, 'baz 2}"}
+  *trace-depth-map* {})
 
 (defn trace-indent
   "Returns an indentation string based on *trace-depth*"
@@ -73,16 +84,26 @@
   "Traces a single call to a function f with args.  'name' is the
   symbol name of the function."
   [name f args]
-  (let [id (gensym "t")]
-    (tracer id (cons name (map realized-part args)))
-    (let [[value err] (binding [*trace-depth* (inc *trace-depth*)]
-                        (try [(apply f args) nil]
-                             (catch Throwable e [e e])))]
-      (binding [*print-length* (or *print-length* 10)
-                *print-level* (or *print-level* 10)] ;;catch-all max, rebind if you want more/less
-        (tracer id (realized-part value) true))
-      (when err (throw err))
-      value)))
+  (let [id (gensym "t")
+        trace-when-within-depth (fn [name value & out]
+                                  (when (or (not *max-depth*) (<= *trace-depth* *max-depth*))
+                                    (tracer name value out)))]
+    
+    (binding [*trace-depth* (inc *trace-depth*)
+              *max-depth* (if-let [additional-depth (get *trace-depth-map* name)]
+                            (let [total-depth (+ *trace-depth* additional-depth)]
+                              (if *max-depth*
+                                (min *max-depth* total-depth)
+                                total-depth))
+                            *max-depth*)]
+      (trace-when-within-depth id (cons name (map realized-part args)))
+      (let [[value err] (try [(apply f args) nil]
+                             (catch Throwable e [e e]))]
+        (binding [*print-length* (or *print-length* 10)
+                  *print-level* (or *print-level* 10)] ;;catch-all max, rebind if you want more/less
+          (trace-when-within-depth id (realized-part value) true))
+        (when err (throw err))
+        value))))
 
 
 
