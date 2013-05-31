@@ -117,10 +117,9 @@
   [fname-depth-map]
   (into {}
         (for [[fname depth] fname-depth-map, :let [thisvar (resolve fname)], :when thisvar]
-          (do (println "rebind: " fname depth)
-           (let [fn-to-trace (var-get thisvar)]
-             [thisvar (fn [& args]
-                        (trace-fn-call fname depth fn-to-trace args))])))))
+          (let [fn-to-trace (var-get thisvar)]
+            [thisvar (fn [& args]
+                       (trace-fn-call fname depth fn-to-trace args))]))))
 
 (defmacro dotrace-depth
   "Given a mapping of function indentifies to max depth, evaluate
