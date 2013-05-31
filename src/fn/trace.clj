@@ -9,13 +9,6 @@
        :doc "Maximum depth to trace to (default no limit)"}
  *max-depth* nil)
 
-(def ^{:dynamic true
-       :doc "Map of function's symbol to how deep to trace into that
-             function.  0 means don't trace even this function, 2
-             means trace this function and anything it calls directly,
-             etc.  example: {'foo 0, 'bar 1, 'baz 2}"}
-  *trace-depth-map* {})
-
 (defn trace-indent
   "Returns an indentation string based on *trace-depth*"
   []
@@ -82,30 +75,28 @@
 
 (defn trace-fn-call
   "Traces a single call to a function f with args.  'name' is the
-  symbol name of the function."
-  [name f args]
-  (let [id (gensym "t")
-        trace-when-within-depth (fn [name value & out]
-                                  (when (or (not *max-depth*) (<= *trace-depth* *max-depth*))
-                                    (tracer name value out)))]
-    
+  symbol name of the function. additional-depth is how deep into this
+  function to trace."
+  [name additional-depth f args]
+  (let [id (gensym "t")]   
     (binding [*trace-depth* (inc *trace-depth*)
-              *max-depth* (if-let [additional-depth (get *trace-depth-map* name)]
+              *max-depth* (if additional-depth 
                             (let [total-depth (+ *trace-depth* additional-depth)]
                               (if *max-depth*
                                 (min *max-depth* total-depth)
                                 total-depth))
                             *max-depth*)]
-      (trace-when-within-depth id (cons name (map realized-part args)))
-      (let [[value err] (try [(apply f args) nil]
-                             (catch Throwable e [e e]))]
-        (binding [*print-length* (or *print-length* 10)
-                  *print-level* (or *print-level* 10)] ;;catch-all max, rebind if you want more/less
-          (trace-when-within-depth id (realized-part value) true))
-        (when err (throw err))
-        value))))
-
-
+      (if (or (not *max-depth*)
+              (<= *trace-depth* *max-depth*))
+        (do (tracer id (cons name (map realized-part args)))
+            (let [[value err] (try [(apply f args) nil]
+                                   (catch Throwable e [e e]))]
+              (binding [*print-length* (or *print-length* 10)
+                        *print-level* (or *print-level* 10)] ;;catch-all max, rebind if you want more/less
+                (tracer id (realized-part value) true))
+              (when err (throw err))
+              value))
+        (apply f args)))))
 
 (defmacro deftrace
   "Use in place of defn; traces each call/return of this fn, including
@@ -118,12 +109,27 @@
        (defn ~name [& args#]
          (trace-fn-call '~name f# args#)))))
 
-(defn rebind-map [fnames]
+(defn rebind-map
+  "takes a map of function's symbol to how deep to trace into that
+   function.  0 means don't trace even this function, 2 means trace
+   this function and anything it calls directly, etc.  example: {'foo
+   0, 'bar 1, 'baz 2}"
+  [fname-depth-map]
   (into {}
-        (for [fname fnames :let [thisvar (resolve fname)] :when thisvar]
-          (let [fn-to-trace (var-get thisvar)]
-            [thisvar (fn [& args]
-                       (trace-fn-call fname fn-to-trace  args))]))))
+        (for [[fname depth] fname-depth-map, :let [thisvar (resolve fname)], :when thisvar]
+          (do (println "rebind: " fname depth)
+           (let [fn-to-trace (var-get thisvar)]
+             [thisvar (fn [& args]
+                        (trace-fn-call fname depth fn-to-trace args))])))))
+
+(defmacro dotrace-depth
+  "Given a mapping of function indentifies to max depth, evaluate
+   the body expressions in an environment in which the identifiers are
+   bound to the traced functions. Does not work on inlined functions,
+   such as clojure.core/+"
+  [fname-depth-map & exprs]
+  `(with-redefs-fn (rebind-map ~fname-depth-map)
+     (fn [] ~@exprs)) )
 
 (defmacro dotrace
   "Given a sequence of function identifiers, evaluate
@@ -131,7 +137,7 @@
    bound to the traced functions. Does not work on inlined functions,
    such as clojure.core/+"
   [fnames & exprs]
-  `(with-redefs-fn (rebind-map ~fnames) (fn [] ~@exprs)) )
+  `(dotrace-depth (zipmap ~fnames (repeat nil)) ~@exprs))
 
 (defn non-macro-fn? [v]
   (and (fn? (deref v)) (not (:macro (meta v)))))
